@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>PictionaryTelephone</title>
+    <style>
+      body {
+        background-color: #CCC;
+        margin: 0;
+        font: 16pt sans-serif;
+        text-align: center;
+      }
+      button, input {
+        font: inherit;
+      }
+      /* label, button {
+        display: block;
+      } */
+      img, canvas {
+        outline: 2px dashed gray;
+      }
+      section {
+        /* display: none; */
+        height: 90vmin;
+        width: 45vmin;
+        margin: 5vmin auto;
+        padding: 5px 3px;
+        background-color: #EEE;
+        box-shadow: 1px 2px 6px rgba(0,0,0, 0.2);
+        border-radius: 3px;
+      }
+      section[data-page="start"] {
+        display: grid;
+        grid-template:
+          "title title" auto
+          ". ." 1fr
+          "new join" auto
+          ". ." 1fr
+          / 1fr 1fr;
+        grid-gap: 10px;
+      }
+      section[data-page="new_game"] {
+        display: grid;
+        grid-template:
+          "theme" auto
+          "." 1fr
+          "qr" auto
+          "." 1fr
+          "stats" auto
+          "start" auto
+          / auto;
+        grid-gap: 10px;
+      }
+      section[data-page="draw_1"] {
+        display: grid;
+        grid-template:
+          "theme" auto
+          "." 1fr
+          "drawing" auto
+          "." 1fr
+          "submit" auto
+          / auto;
+        grid-gap: 10px;
+      }
+      section[data-page="answer_1"] {
+        display: grid;
+        grid-template:
+          "theme" auto
+          "." 1fr
+          "drawing" auto
+          "." 1fr
+          "answer" auto
+          "." 1fr
+          "submit" auto
+          / auto;
+        grid-gap: 10px;
+      }
+    </style>
+  </head>
+  <body is="pt-app">
+
+    <section data-page="start">
+      <h1 style="grid-area: title">Pictionary Telephone</h1>
+      <button data-to-page="new_game" style="grid-area: new">Start New Game</button>
+      <button data-to-page="join_game" style="grid-area: join">Join Existing Game</button>
+    </section>
+
+    <section data-page="new_game">
+      <label style="grid-area: theme">
+        Theme
+        <input />
+      </label>
+      <img src="qrgenius.net/GetCode/CM41RG7CY6LNO01" alt="QR code to join game" style="grid-area: qr;height: 45vmin" />
+      <p style="grid-area: stats">
+        5 players joined
+      </p>
+      <button data-to-page="start_game" style="grid-area: start">Start Game</button>
+    </section>
+
+    <section data-page="join_game">
+      <label>
+        Game ID
+        <input />
+      </label>
+      <button data-to-page="start_game">Join</button>
+    </section>
+
+    <section data-page="start_game">
+      <h1>{{theme}}</h1>
+      <label>
+        Your entry for the theme:
+        <input />
+      </label>
+      <button data-to-page="draw_1">submit</button>
+    </section>
+
+    <!-- Waiting for some other people to answer -->
+
+    <section data-page="draw_1">
+      <h1 style="grid-area: theme">{{theme}}</h1>
+      <!-- <img alt="draw here" style="grid-area: drawing;height: 45vmin" /> -->
+      <canvas is="pt-drawing" style="grid-area: drawing;height: 45vmin;width: 100%"></canvas>
+      <button data-to-page="answer_1" style="grid-area: submit">submit</button>
+    </section>
+
+    <!-- Waiting for some other people to answer -->
+
+    <section data-page="answer_1">
+      <h1 style="grid-area: theme">{{theme}}</h1>
+      <img alt="draw here" style="grid-area: drawing;height: 45vmin" />
+      <label style="grid-area: answer">
+        What is this?
+        <input />
+      </label>
+      <button data-to-page="final" style="grid-area: submit">submit</button>
+    </section>
+
+    <!-- Waiting for everyone to finish -->
+
+    <section data-page="final">
+      final
+    </section>
+
+    <script>
+      class App extends HTMLBodyElement {
+        constructor() {
+          super();
+          this.styleEl = document.createElement('style');
+          this.appendChild(this.styleEl);
+          this.state = {
+            page: 'start'
+          };
+          this.render();
+          this.handleClick = this.handleClick.bind(this);
+          this.addEventListener('click', this.handleClick);
+        }
+
+        handleClick(e) {
+          const button = e.target;
+          if (button.tagName !== 'BUTTON' || !button.dataset.toPage) return;
+
+          this.state.page = button.dataset.toPage;
+          this.render();
+        }
+
+        render() {
+          const { page } = this.state;
+          this.styleEl.innerHTML = `
+            body > section:not([data-page="${page}"]) {
+              display: none;
+            }
+          `;
+        }
+      }
+      customElements.define('pt-app', App, { extends: 'body' });
+
+      class Drawing extends HTMLCanvasElement {
+        constructor() {
+          super();
+          const canvas = this;
+          canvas.width = canvas.clientWidth;
+          canvas.height = canvas.clientHeight;
+          // stolen from: https://codesandbox.io/s/paint-tool-final-g362x?from-embed
+          const context = this.getContext('2d');
+          const strokeWidth = 3;
+
+          // Drawing state
+          let latestPoint;
+          let drawing = false;
+          let currentAngle;
+
+          // Geometry
+
+          const rotatePoint = (distance, angle, origin) => [
+            origin[0] + distance * Math.cos(angle),
+            origin[1] + distance * Math.sin(angle)
+          ];
+
+          const getBearing = (origin, destination) =>
+            (Math.atan2(destination[1] - origin[1], destination[0] - origin[0]) -
+              Math.PI / 2) %
+            (Math.PI * 2);
+
+          const getNewAngle = (origin, destination, oldAngle) => {
+            const bearing = getBearing(origin, destination);
+            if (typeof oldAngle === "undefined") {
+              return bearing;
+            }
+            return oldAngle - angleDiff(oldAngle, bearing);
+          };
+
+          const angleDiff = (angleA, angleB) => {
+            const twoPi = Math.PI * 2;
+            const diff =
+              ((angleA - (angleB > 0 ? angleB : angleB + twoPi) + Math.PI) % twoPi) -
+              Math.PI;
+            return diff < -Math.PI ? diff + twoPi : diff;
+          };
+
+          // Drawing functions
+
+          const strokeBristle = (origin, destination, controlPoint) => {
+            context.beginPath();
+            context.moveTo(origin[0], origin[1]);
+            context.strokeStyle = "black";
+            context.lineWidth = strokeWidth;
+            context.lineCap = "round";
+            context.lineJoin = "round";
+            context.shadowColor = "black";
+            context.shadowBlur = strokeWidth / 2;
+            context.quadraticCurveTo(
+              controlPoint[0],
+              controlPoint[1],
+              destination[0],
+              destination[1]
+            );
+            context.lineTo(destination[0], destination[1]);
+            context.stroke();
+          };
+
+          const drawStroke = (origin, destination, oldAngle, newAngle) => {
+            context.beginPath();
+            const bristleOrigin = rotatePoint(
+              0 - strokeWidth / 2,
+              oldAngle,
+              origin
+            );
+
+            const bristleDestination = rotatePoint(
+              0 - strokeWidth / 2,
+              newAngle,
+              destination
+            );
+            const controlPoint = rotatePoint(
+              0 - strokeWidth / 2,
+              newAngle,
+              origin
+            );
+
+            strokeBristle(bristleOrigin, bristleDestination, controlPoint);
+          };
+          const continueStroke = newPoint => {
+            const newAngle = getNewAngle(latestPoint, newPoint, currentAngle);
+            drawStroke(latestPoint, newPoint, currentAngle, newAngle);
+            currentAngle = newAngle % (Math.PI * 2);
+            latestPoint = newPoint;
+          };
+          // Event helpers
+
+          const startStroke = point => {
+            currentAngle = undefined;
+            drawing = true;
+            latestPoint = point;
+          };
+
+          const getTouchPoint = evt => {
+            if (!evt.currentTarget) {
+              return [0, 0];
+            }
+            const rect = evt.currentTarget.getBoundingClientRect();
+            const touch = evt.targetTouches[0];
+            return [touch.clientX - rect.left, touch.clientY - rect.top];
+          };
+
+          const BUTTON = 0b01;
+          const mouseButtonIsDown = buttons => (BUTTON & buttons) === BUTTON;
+
+          // Event handlers
+
+          const mouseMove = evt => {
+            if (!drawing) {
+              return;
+            }
+            continueStroke([evt.offsetX, evt.offsetY]);
+          };
+
+          const mouseDown = evt => {
+            if (drawing) {
+              return;
+            }
+            evt.preventDefault();
+            canvas.addEventListener("mousemove", mouseMove, false);
+            startStroke([evt.offsetX, evt.offsetY]);
+          };
+
+          const mouseEnter = evt => {
+            if (!mouseButtonIsDown(evt.buttons) || drawing) {
+              return;
+            }
+            mouseDown(evt);
+          };
+
+          const endStroke = evt => {
+            if (!drawing) {
+              return;
+            }
+            drawing = false;
+            evt.currentTarget.removeEventListener("mousemove", mouseMove, false);
+          };
+
+          const touchStart = evt => {
+            if (drawing) {
+              return;
+            }
+            evt.preventDefault();
+            startStroke(getTouchPoint(evt));
+          };
+
+          const touchMove = evt => {
+            if (!drawing) {
+              return;
+            }
+            continueStroke(getTouchPoint(evt));
+          };
+
+          const touchEnd = evt => {
+            drawing = false;
+          };
+
+          this.addEventListener("touchstart", touchStart, false);
+          this.addEventListener("touchend", touchEnd, false);
+          this.addEventListener("touchcancel", touchEnd, false);
+          this.addEventListener("touchmove", touchMove, false);
+
+          this.addEventListener("mousedown", mouseDown, false);
+          this.addEventListener("mouseup", endStroke, false);
+          this.addEventListener("mouseout", endStroke, false);
+          this.addEventListener("mouseenter", mouseEnter, false);
+        }
+      }
+      customElements.define('pt-drawing', Drawing, { extends: 'canvas' });
+    </script>
+  </body>
+</html>
