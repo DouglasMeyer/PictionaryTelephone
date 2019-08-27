@@ -2,8 +2,8 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Html
-import Html.Attributes
-import Html.Events
+import Html.Attributes as Attrs
+import Html.Events as Events
 
 
 
@@ -18,21 +18,50 @@ type Page
     | Describe
 
 
-type alias Turn =
-    { phrase : String, drawing : Maybe String }
+type alias Phrase =
+    { author : String, phrase : String }
 
 
-type alias Thread =
-    { writer : String, turns : List Turn }
+type alias Drawing =
+    { author : String, drawing : String }
+
+
+type alias Pair =
+    ( Phrase, Drawing )
+
+
+type Thread
+    = CompleteThread (List Pair) Phrase
+    | IncompleteThread (List Pair)
+
+
+addPhrase : Phrase -> Thread -> Result String Thread
+addPhrase phrase thread =
+    case thread of
+        IncompleteThread pairs ->
+            Ok <| CompleteThread pairs phrase
+
+        CompleteThread _ _ ->
+            Result.Err "Can not add a Phrase to a Complete Thread"
+
+
+addDrawing : Drawing -> Thread -> Result String Thread
+addDrawing drawing thread =
+    case thread of
+        CompleteThread pairs phrase ->
+            Ok <| IncompleteThread <| pairs ++ [ ( phrase, drawing ) ]
+
+        IncompleteThread _ ->
+            Result.Err "Can not add a Drawing to a Incomplete Thread"
 
 
 type alias Model =
-    { page : Page, name : String, currentThread : Int, threads : List Thread }
+    { page : Page, error : Maybe String, name : String, currentThread : Int, threads : List Thread }
 
 
 init : Model
 init =
-    { page = Start, name = "", currentThread = 0, threads = [] }
+    { page = Start, error = Nothing, name = "", currentThread = 0, threads = [] }
 
 
 
@@ -44,10 +73,10 @@ type Msg
     | JoinGame
     | SetName String
     | StartGame
-    | SetTurnPhrase Int Int String
-    | SubmitTurnPhrase Int Int
-    | SetTurnDrawing Int Int String
-    | SubmitTurnDrawing Int Int
+    | SetPhrase String
+    | SubmitPhrase
+    | SetDrawing String
+    | SubmitDrawing
 
 
 update : Msg -> Model -> Model
@@ -63,61 +92,101 @@ update msg model =
             model
 
         StartGame ->
-            { model
-                | page = NewThread
-                , currentThread = 0
-                , threads =
-                    [ Thread model.name
-                        [ Turn "" Nothing
-                        ]
-                    ]
-            }
+            let
+                threadResult =
+                    addPhrase (Phrase model.name "") (IncompleteThread [])
+            in
+            case threadResult of
+                Ok thread ->
+                    { model
+                        | page = NewThread
+                        , currentThread = 0
+                        , threads =
+                            [ thread ]
+                    }
 
-        SetTurnPhrase threadIndex turnIndex phrase ->
+                Result.Err error ->
+                    { model | page = Start, error = Just error }
+
+        SetPhrase newPhrase ->
             { model
                 | threads =
-                    updateIndex threadIndex
-                        (\thread ->
-                            { thread
-                                | turns =
-                                    updateIndex turnIndex
-                                        (\turn ->
-                                            { turn | phrase = phrase }
-                                        )
-                                        thread.turns
-                            }
+                    updateIndex model.currentThread
+                        (\oldThread ->
+                            case oldThread of
+                                CompleteThread thread phrase ->
+                                    CompleteThread thread { phrase | phrase = newPhrase }
+
+                                IncompleteThread _ ->
+                                    oldThread
                         )
                         model.threads
             }
 
-        SubmitTurnPhrase threadIndex turnIndex ->
-            { model
-                | page = Draw
-                , currentThread = 0
-            }
+        SubmitPhrase ->
+            let
+                threadIndex =
+                    model.currentThread
 
-        SetTurnDrawing threadIndex turnIndex drawing ->
+                maybeThread : Maybe Thread
+                maybeThread =
+                    model.threads |> List.drop threadIndex |> List.reverse |> List.head
+
+                newThreadResult =
+                    maybeThread
+                        |> Result.fromMaybe ("Can't find Thread id " ++ String.fromInt threadIndex)
+                        |> Result.andThen (addDrawing (Drawing "other" ""))
+            in
+            case newThreadResult of
+                Ok newThread ->
+                    { model
+                        | page = Draw
+                        , currentThread = threadIndex
+                        , threads = updateIndex threadIndex (\_ -> newThread) model.threads
+                    }
+
+                Result.Err error ->
+                    { model | page = Start, error = Just error }
+
+        SetDrawing newDrawing ->
             { model
                 | threads =
-                    updateIndex threadIndex
-                        (\thread ->
-                            { thread
-                                | turns =
-                                    updateIndex turnIndex
-                                        (\turn ->
-                                            { turn | drawing = Just drawing }
-                                        )
-                                        thread.turns
-                            }
+                    updateIndex model.currentThread
+                        (\oldThread ->
+                            case oldThread of
+                                IncompleteThread pairs ->
+                                    IncompleteThread <| updateIndex (List.length pairs - 1) (\( phrase, drawing ) -> ( phrase, Drawing model.name newDrawing )) pairs
+
+                                CompleteThread _ _ ->
+                                    oldThread
                         )
                         model.threads
             }
 
-        SubmitTurnDrawing threadIndex turnIndex ->
-            { model
-                | page = Describe
-                , currentThread = 0
-            }
+        SubmitDrawing ->
+            let
+                threadIndex =
+                    model.currentThread
+
+                maybeThread : Maybe Thread
+                maybeThread =
+                    model.threads |> List.drop threadIndex |> List.reverse |> List.head
+
+                newThreadResult =
+                    maybeThread
+                        |> Result.fromMaybe ("Can't find Thread id " ++ String.fromInt threadIndex)
+                        |> Result.andThen (addPhrase (Phrase model.name ""))
+            in
+            case newThreadResult of
+                Ok newThread ->
+                    { model
+                        | page = Describe
+                        , currentThread = threadIndex
+                        , threads = updateIndex threadIndex (\_ -> newThread) model.threads
+                    }
+
+                Result.Err error ->
+                    { model | page = Start, error = Just error }
 
 
 updateIndex : Int -> (a -> a) -> List a -> List a
@@ -160,9 +229,13 @@ startView : Model -> Html.Html Msg
 startView model =
     rowView
         [ Html.h1 [] [ Html.text "Pictionary Telephone" ]
+        , Html.code
+            []
+            [ model.error |> Maybe.withDefault "" |> Html.text
+            ]
         , columnView
-            [ Html.button [ Html.Events.onClick StartNewGame ] [ Html.text "Start New Game" ]
-            , Html.button [ Html.Events.onClick JoinGame ] [ Html.text "Join Game" ]
+            [ Html.button [ Events.onClick StartNewGame ] [ Html.text "Start New Game" ]
+            , Html.button [ Events.onClick JoinGame ] [ Html.text "Join Game" ]
             ]
         ]
 
@@ -173,14 +246,14 @@ newGameView model =
         [ Html.label []
             [ Html.text "Your Name"
             , Html.input
-                [ model.name |> Html.Attributes.value
-                , Html.Events.onInput SetName
+                [ model.name |> Attrs.value
+                , Events.onInput SetName
                 ]
                 []
             ]
         , Html.button
-            [ Html.Events.onClick StartGame
-            , Html.Attributes.disabled <| model.name == ""
+            [ Events.onClick StartGame
+            , Attrs.disabled <| model.name == ""
             ]
             [ Html.text "Start Game" ]
         ]
@@ -190,37 +263,51 @@ newThreadView : Model -> Html.Html Msg
 newThreadView model =
     rowView
         [ Html.label [] [ Html.text "Your phrase for the game" ]
-        , Html.input [ Html.Events.onInput (SetTurnPhrase 0 0) ] []
-        , Html.button [ Html.Events.onClick (SubmitTurnPhrase 0 0) ] [ Html.text "Submit" ]
+        , Html.input [ Events.onInput SetPhrase ] []
+        , Html.button [ Events.onClick SubmitPhrase ] [ Html.text "Submit" ]
         ]
 
 
 newDrawingView : Model -> Html.Html Msg
 newDrawingView model =
     let
-        lastTurn =
-            model.threads
-                |> (List.take (model.currentThread + 1) >> List.head)
-                |> Maybe.map .turns
-                |> Maybe.andThen (List.reverse >> List.head)
-    in
-    case lastTurn of
-        Nothing ->
-            Html.code [] [ Html.text "Somehow there aren't any threads or turns" ]
+        threadIndex =
+            model.currentThread
 
-        Just turn ->
+        maybeLastThread : Maybe Thread
+        maybeLastThread =
+            model.threads
+                |> (List.take (threadIndex + 1) >> List.head)
+    in
+    case maybeLastThread of
+        Just (IncompleteThread pairs) ->
             rowView
-                [ Html.h1 [] [ Html.text turn.phrase ]
+                [ Html.h1
+                    []
+                    [ pairs
+                        |> List.reverse
+                        |> List.head
+                        |> Maybe.andThen (Tuple.first >> Just)
+                        |> Maybe.map .phrase
+                        |> Maybe.withDefault ""
+                        |> Html.text
+                    ]
                 , Html.img
-                    [ Html.Attributes.alt "Draw what it is here"
-                    , Html.Attributes.style "height" "80vmin"
-                    , Html.Attributes.style "width" "40vmin"
-                    , Html.Attributes.style "place-self" "center"
-                    , Html.Attributes.style "outline" "2px dashed lightgray"
+                    [ Attrs.alt "Draw what it is here"
+                    , Attrs.style "height" "80vmin"
+                    , Attrs.style "width" "40vmin"
+                    , Attrs.style "place-self" "center"
+                    , Attrs.style "outline" "2px dashed lightgray"
                     ]
                     []
-                , Html.button [ Html.Events.onClick (SubmitTurnDrawing model.currentThread 0) ] [ Html.text "Submit" ]
+                , Html.button [ Events.onClick SubmitDrawing ] [ Html.text "Submit" ]
                 ]
+
+        Just _ ->
+            Html.code [] [ Html.text "Trying to update a Complete Thread" ]
+
+        Nothing ->
+            Html.code [] [ "Can not get thread " ++ (threadIndex |> String.fromInt) |> Html.text ]
 
 
 newDescribeView : Model -> Html.Html Msg
@@ -229,34 +316,35 @@ newDescribeView model =
         threadIndex =
             model.currentThread
 
-        lastTurn =
+        maybeLastThread : Maybe Thread
+        maybeLastThread =
             model.threads
                 |> (List.take (threadIndex + 1) >> List.head)
-                |> Maybe.map .turns
-                |> Maybe.andThen (List.reverse >> List.head)
     in
-    case lastTurn of
-        Nothing ->
-            Html.code [] [ Html.text "Somehow there aren't any threads or turns" ]
-
-        Just turn ->
+    case maybeLastThread of
+        Just (CompleteThread pairs phrase) ->
             rowView
                 [ Html.img
-                    [ Html.Attributes.alt "The drawing"
-                    , Html.Attributes.style "height" "80vmin"
-                    , Html.Attributes.style "width" "40vmin"
-                    , Html.Attributes.style "place-self" "center"
-                    , Html.Attributes.style "outline" "2px dashed lightgray"
+                    [ Attrs.alt "The drawing"
+                    , Attrs.style "height" "80vmin"
+                    , Attrs.style "width" "40vmin"
+                    , Attrs.style "place-self" "center"
+                    , Attrs.style "outline" "2px dashed lightgray"
                     ]
                     []
                 , Html.input
-                    [ Html.Events.onInput (SetTurnPhrase threadIndex 0)
-                    , Html.Attributes.placeholder "Describe the drawing"
+                    [ Events.onInput SetPhrase
+                    , Attrs.placeholder "Describe the drawing"
                     ]
                     []
-
-                , Html.button [ Html.Events.onClick (SubmitTurnPhrase threadIndex 0) ] [ Html.text "Submit" ]
+                , Html.button [ Events.onClick SubmitPhrase ] [ Html.text "Submit" ]
                 ]
+
+        Just _ ->
+            Html.code [] [ Html.text "Trying to update a Incomplete Thread" ]
+
+        Nothing ->
+            Html.code [] [ "Can not get thread" ++ (threadIndex |> String.fromInt) |> Html.text ]
 
 
 
@@ -266,18 +354,18 @@ newDescribeView model =
 rowView : List (Html.Html Msg) -> Html.Html Msg
 rowView =
     Html.div
-        [ Html.Attributes.style "display" "grid"
-        , Html.Attributes.style "grid-auto-flow" "row"
-        , Html.Attributes.style "grid-gap" "1em"
+        [ Attrs.style "display" "grid"
+        , Attrs.style "grid-auto-flow" "row"
+        , Attrs.style "grid-gap" "1em"
         ]
 
 
 columnView : List (Html.Html Msg) -> Html.Html Msg
 columnView =
     Html.div
-        [ Html.Attributes.style "display" "grid"
-        , Html.Attributes.style "grid-auto-flow" "column"
-        , Html.Attributes.style "grid-gap" "1em"
+        [ Attrs.style "display" "grid"
+        , Attrs.style "grid-auto-flow" "column"
+        , Attrs.style "grid-gap" "1em"
         ]
 
 
