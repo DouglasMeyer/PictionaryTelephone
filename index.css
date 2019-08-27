@@ -1,0 +1,13 @@
+body {
+  margin: 0.5em;
+  font-family: sans-serif;
+}
+
+button, input {
+  font: inherit;
+  padding: 1ex 1em;
+}
+
+label > input:first-child {
+  margin-left: 1ex;
+}
