@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "parcel index.html",
     "build": "parcel build --public-url \"/PictionaryTelephone/\" index.html",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test": "elm-test"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +18,8 @@
     "gh-pages": "^2.1.1",
     "node-elm-compiler": "^5.0.4",
     "parcel-bundler": "^1.12.3"
+  },
+  "dependencies": {
+    "peerjs": "^1.0.3"
   }
 }
