@@ -19,6 +19,8 @@ class DrawingCanvas extends HTMLElement {
     setTimeout(() => {
       scale = canvas.height / canvas.clientHeight;
     });
+
+    // stolen from: https://codesandbox.io/s/paint-tool-final-g362x?from-embed
     const context = canvas.getContext('2d');
     const strokeWidth = 3;
 

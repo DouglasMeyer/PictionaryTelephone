@@ -21,14 +21,12 @@ type alias Drawing =
     { author : String, drawing : String }
 
 
-
 type alias Pair =
     ( Maybe Phrase, Maybe Drawing )
 
 
 type alias Thread =
     { id : Int, pairs : List Pair }
-
 
 
 setRound : Int -> Thread -> ( String, String ) -> Thread
@@ -72,7 +70,6 @@ setRound round thread ( author, value ) =
                 , end
                 ]
     }
-
 
 
 getCurrent : Model -> Result String ( ( Int, String ), Thread )

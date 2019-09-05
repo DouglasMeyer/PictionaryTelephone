@@ -25,7 +25,6 @@ decodePair =
         (JD.maybe (JD.field "drawing" decodeDrawing))
 
 
-
 decodeThread : JD.Decoder T.Thread
 decodeThread =
     JD.map2 T.Thread

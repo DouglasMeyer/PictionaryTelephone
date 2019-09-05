@@ -136,8 +136,15 @@ update msg ({ me } as model) =
             let
                 newMe =
                     { me | peerId = peerId }
+
+                gameId =
+                    if model.me.host then
+                        peerId
+
+                    else
+                        model.gameId
             in
-            ( { model | me = newMe }
+            ( { model | me = newMe, gameId = gameId }
             , newMe |> encodePlayer |> sendPlayer
             )
 
@@ -485,40 +492,53 @@ newGameView model =
                 |> List.map
                     (.name >> Html.text >> List.singleton >> Html.li [])
     in
-    [ model.error |> Maybe.withDefault "" |> Html.text |> List.singleton |> Html.pre [ Attrs.class "error" ]
-    , columnView
-        [ Html.p
-            []
-            [ Html.text <| "Join game with id " ++ model.gameId ++ " or scan QR code:"
+    rowView
+        [ model.error |> Maybe.withDefault "" |> Html.text |> List.singleton |> Html.pre [ Attrs.class "error" ]
+        , columnView
+            [ Html.p
+                []
+                [ Html.text <| "Join game with id " ++ model.gameId ++ " or scan QR code:"
+                ]
+            , QRCode.encode (model.url ++ "?gameId=" ++ model.gameId)
+                |> Result.map QRCode.toSvg
+                |> Result.withDefault
+                    (Html.text "Error while encoding to QRCode.")
             ]
-        , QRCode.encode (model.url ++ "?gameId=" ++ model.gameId)
-            |> Result.map QRCode.toSvg
-            |> Result.withDefault
-                (Html.text "Error while encoding to QRCode.")
-        ]
-    , Html.label []
-        [ Html.text "Your Name"
-        , Html.input
-            [ model.me.name |> Attrs.value
-            , Events.onInput SetName
+        , Html.label []
+            [ Html.text "Your Name"
+            , Html.input
+                [ model.me.name |> Attrs.value
+                , Events.onInput SetName
+                ]
+                []
             ]
-            []
+        , Html.ul [] playerList
+        , startButton
         ]
-    ]
-        ++ [ Html.ul [] playerList
-           ]
-        ++ [ startButton
-           ]
-        |> rowView
 
 
 newThreadView : Model -> Html.Html Msg
 newThreadView model =
+    let
+        playerOrder : List Player
+        playerOrder =
+            List.sortBy
+                (.index >> (-) model.me.index >> modBy (List.length model.players))
+                model.players
+    in
     rowView
         [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
         , Html.label [] [ Html.text "Your phrase for the game" ]
         , Html.input [ Events.onInput SetRound ] []
         , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
+        , Html.p []
+            [ playerOrder
+                |> List.map .name
+                |> List.reverse
+                |> List.intersperse " → "
+                |> List.foldl (++) ""
+                |> Html.text
+            ]
         ]
 
 
@@ -544,32 +564,61 @@ newDrawingView model =
                             |> Maybe.andThen Tuple.first
                             |> Maybe.map .phrase
                             |> Result.fromMaybe
-                                "waiting for other player"
+                                "waiting on other players"
                     )
     in
-    case Result.map2 Tuple.pair currentResult phraseResult of
+    case currentResult of
         Err error ->
-            rowView
-                [ Html.p [] [ Html.text error ]
-                ]
+            rowView [ Html.p [] [ Html.text error ] ]
 
-        Ok ( ( ( round, _ ), thread ), phrase ) ->
-            rowView
-                [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-                , Html.h1 []
-                    [ Html.text phrase
-                    ]
-                , Html.node "drawing-canvas"
-                    [ Attrs.alt "Draw what it is here"
-                    , Attrs.style "height" "80vmin"
-                    , Attrs.style "width" "40vmin"
-                    , Attrs.style "place-self" "center"
-                    , Attrs.style "outline" "2px dashed lightgray"
-                    , Events.on "drawingChanged" <| Json.Decode.map SetRound <| Json.Decode.at [ "target", "drawing" ] <| Json.Decode.string
-                    ]
-                    []
-                , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
-                ]
+        Ok ( ( round, _ ), thread ) ->
+            let
+                playerOrder : List Player
+                playerOrder =
+                    List.sortBy
+                        (.index >> (-) model.me.index >> (+) round >> modBy (List.length model.players))
+                        model.players
+            in
+            case phraseResult of
+                Err error ->
+                    rowView
+                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
+                        , Html.p [] [ Html.text error ]
+                        , Html.p []
+                            [ playerOrder
+                                |> List.map .name
+                                |> List.reverse
+                                |> List.intersperse " → "
+                                |> List.foldl (++) ""
+                                |> Html.text
+                            ]
+                        ]
+
+                Ok phrase ->
+                    rowView
+                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
+                        , Html.h1 []
+                            [ Html.text phrase
+                            ]
+                        , Html.node "drawing-canvas"
+                            [ Attrs.alt "Draw what it is here"
+                            , Attrs.style "height" "80vmin"
+                            , Attrs.style "width" "40vmin"
+                            , Attrs.style "place-self" "center"
+                            , Attrs.style "outline" "2px dashed lightgray"
+                            , Events.on "drawingChanged" <| Json.Decode.map SetRound <| Json.Decode.at [ "target", "drawing" ] <| Json.Decode.string
+                            ]
+                            []
+                        , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
+                        , Html.p []
+                            [ playerOrder
+                                |> List.map .name
+                                |> List.reverse
+                                |> List.intersperse " → "
+                                |> List.foldl (++) ""
+                                |> Html.text
+                            ]
+                        ]
 
 
 newDescribeView : Model -> Html.Html Msg
@@ -594,34 +643,55 @@ newDescribeView model =
                             |> Maybe.andThen Tuple.second
                             |> Maybe.map .drawing
                             |> Result.fromMaybe
-                                "waiting for other player"
+                                "waiting on other players"
                     )
     in
-    case Result.map2 Tuple.pair currentResult drawingResult of
+    case currentResult of
         Err error ->
-            rowView
-                [ Html.p [] [ Html.text error ]
-                ]
+            rowView [ Html.p [] [ Html.text error ] ]
 
-        Ok ( ( ( round, _ ), thread ), drawing ) ->
-            rowView
-                [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-                , Html.img
-                    [ Attrs.alt "The drawing"
-                    , Attrs.src drawing
-                    , Attrs.style "height" "80vmin"
-                    , Attrs.style "width" "40vmin"
-                    , Attrs.style "place-self" "center"
-                    , Attrs.style "outline" "2px dashed lightgray"
-                    ]
-                    []
-                , Html.input
-                    [ Events.onInput SetRound
-                    , Attrs.placeholder "Describe the drawing"
-                    ]
-                    []
-                , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
-                ]
+        Ok ( ( round, _ ), thread ) ->
+            let
+                playerOrder : List Player
+                playerOrder =
+                    List.sortBy
+                        (.index >> (-) model.me.index >> (+) round >> modBy (List.length model.players))
+                        model.players
+            in
+            case drawingResult of
+                Err error ->
+                    rowView
+                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
+                        , Html.p [] [ Html.text error ]
+                        , Html.p []
+                            [ playerOrder
+                                |> List.map .name
+                                |> List.reverse
+                                |> List.intersperse " → "
+                                |> List.foldl (++) ""
+                                |> Html.text
+                            ]
+                        ]
+
+                Ok drawing ->
+                    rowView
+                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
+                        , Html.img
+                            [ Attrs.alt "The drawing"
+                            , Attrs.src drawing
+                            , Attrs.style "height" "80vmin"
+                            , Attrs.style "width" "40vmin"
+                            , Attrs.style "place-self" "center"
+                            , Attrs.style "outline" "2px dashed lightgray"
+                            ]
+                            []
+                        , Html.input
+                            [ Events.onInput SetRound
+                            , Attrs.placeholder "Describe the drawing"
+                            ]
+                            []
+                        , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
+                        ]
 
 
 
