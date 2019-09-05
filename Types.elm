@@ -7,6 +7,7 @@ type Page
     | NewThread
     | Draw
     | Describe
+    | Review
 
 
 type alias Player =

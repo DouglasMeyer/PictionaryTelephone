@@ -367,8 +367,11 @@ update msg ({ me } as model) =
                                     Describe
 
                                 _ ->
-                                    Draw
+                                    if round >= ((List.length model.players - 1) // 2 * 2 + 1) then
+                                        Review
 
+                                    else
+                                        Draw
                       }
                     , thread |> encodeThread |> sendThread
                     )
@@ -444,29 +447,39 @@ view model =
         Describe ->
             newDescribeView model
 
+        Review ->
+            reviewView model
+
 
 startView : Model -> Html.Html Msg
 startView model =
     rowView
-        [ Html.h1 [] [ Html.text "Pictionary Telephone" ]
-        , Html.code
-            []
-            [ model.error |> Maybe.withDefault "" |> Html.text
-            ]
-        , Html.button [ Events.onClick StartNewGame ] [ Html.text "Start New Game" ]
-        , Html.div [] []
-        , Html.input
-            [ Attrs.placeholder "host id"
-            , model.gameId |> Attrs.value
-            , Events.onInput SetGameId
-            ]
-            []
-        , Html.button
-            [ Events.onClick JoinGame
-            , Attrs.disabled <| model.gameId == ""
-            ]
-            [ Html.text "Join Game"
-            ]
+        [ ( "auto", Html.h1 [] [ Html.text "Pictionary Telephone" ] )
+        , ( "auto"
+          , Html.code
+                []
+                [ model.error |> Maybe.withDefault "" |> Html.text
+                ]
+          )
+        , ( "auto", Html.button [ Events.onClick StartNewGame ] [ Html.text "Start New Game" ] )
+        , ( "auto", Html.div [] [] )
+        , ( "auto"
+          , Html.input
+                [ Attrs.placeholder "host id"
+                , model.gameId |> Attrs.value
+                , Events.onInput SetGameId
+                ]
+                []
+          )
+        , ( "auto"
+          , Html.button
+                [ Events.onClick JoinGame
+                , Attrs.disabled <| model.gameId == ""
+                ]
+                [ Html.text "Join Game"
+                ]
+          )
+        , ( "1fr", Html.div [] [] )
         ]
 
 
@@ -493,27 +506,35 @@ newGameView model =
                     (.name >> Html.text >> List.singleton >> Html.li [])
     in
     rowView
-        [ model.error |> Maybe.withDefault "" |> Html.text |> List.singleton |> Html.pre [ Attrs.class "error" ]
-        , columnView
-            [ Html.p
-                []
-                [ Html.text <| "Join game with id " ++ model.gameId ++ " or scan QR code:"
+        [ ( "auto", model.error |> Maybe.withDefault "" |> Html.text |> List.singleton |> Html.pre [ Attrs.class "error" ] )
+        , ( "1fr"
+          , columnView
+                [ ( "auto"
+                  , Html.p
+                        []
+                        [ Html.text <| "Join game with id " ++ model.gameId ++ " or scan QR code:"
+                        ]
+                  )
+                , ( "auto"
+                  , QRCode.encode (model.url ++ "?gameId=" ++ model.gameId)
+                        |> Result.map QRCode.toSvg
+                        |> Result.withDefault
+                            (Html.text "Error while encoding to QRCode.")
+                  )
                 ]
-            , QRCode.encode (model.url ++ "?gameId=" ++ model.gameId)
-                |> Result.map QRCode.toSvg
-                |> Result.withDefault
-                    (Html.text "Error while encoding to QRCode.")
-            ]
-        , Html.label []
-            [ Html.text "Your Name"
-            , Html.input
-                [ model.me.name |> Attrs.value
-                , Events.onInput SetName
+          )
+        , ( "auto"
+          , Html.label []
+                [ Html.text "Your Name"
+                , Html.input
+                    [ model.me.name |> Attrs.value
+                    , Events.onInput SetName
+                    ]
+                    []
                 ]
-                []
-            ]
-        , Html.ul [] playerList
-        , startButton
+          )
+        , ( "1fr", Html.ul [] playerList )
+        , ( "auto", startButton )
         ]
 
 
@@ -527,18 +548,20 @@ newThreadView model =
                 model.players
     in
     rowView
-        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-        , Html.label [] [ Html.text "Your phrase for the game" ]
-        , Html.input [ Events.onInput SetRound ] []
-        , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
-        , Html.p []
-            [ playerOrder
-                |> List.map .name
-                |> List.reverse
-                |> List.intersperse " → "
-                |> List.foldl (++) ""
-                |> Html.text
-            ]
+        [ ( "auto", Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ] )
+        , ( "auto", Html.label [] [ Html.text "Your phrase for the game" ] )
+        , ( "auto", Html.input [ Events.onInput SetRound ] [] )
+        , ( "auto", Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ] )
+        , ( "1fr"
+          , Html.p []
+                [ playerOrder
+                    |> List.map .name
+                    |> List.reverse
+                    |> List.intersperse " → "
+                    |> List.foldl (++) ""
+                    |> Html.text
+                ]
+          )
         ]
 
 
@@ -569,7 +592,7 @@ newDrawingView model =
     in
     case currentResult of
         Err error ->
-            rowView [ Html.p [] [ Html.text error ] ]
+            rowView [ ( "auto", Html.p [] [ Html.text error ] ) ]
 
         Ok ( ( round, _ ), thread ) ->
             let
@@ -582,42 +605,50 @@ newDrawingView model =
             case phraseResult of
                 Err error ->
                     rowView
-                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-                        , Html.p [] [ Html.text error ]
-                        , Html.p []
-                            [ playerOrder
-                                |> List.map .name
-                                |> List.reverse
-                                |> List.intersperse " → "
-                                |> List.foldl (++) ""
-                                |> Html.text
-                            ]
+                        [ ( "auto", Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ] )
+                        , ( "auto", Html.p [] [ Html.text error ] )
+                        , ( "auto"
+                          , Html.p []
+                                [ playerOrder
+                                    |> List.map .name
+                                    |> List.reverse
+                                    |> List.intersperse " → "
+                                    |> List.foldl (++) ""
+                                    |> Html.text
+                                ]
+                          )
                         ]
 
                 Ok phrase ->
                     rowView
-                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-                        , Html.h1 []
-                            [ Html.text phrase
-                            ]
-                        , Html.node "drawing-canvas"
-                            [ Attrs.alt "Draw what it is here"
-                            , Attrs.style "height" "80vmin"
-                            , Attrs.style "width" "40vmin"
-                            , Attrs.style "place-self" "center"
-                            , Attrs.style "outline" "2px dashed lightgray"
-                            , Events.on "drawingChanged" <| Json.Decode.map SetRound <| Json.Decode.at [ "target", "drawing" ] <| Json.Decode.string
-                            ]
-                            []
-                        , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
-                        , Html.p []
-                            [ playerOrder
-                                |> List.map .name
-                                |> List.reverse
-                                |> List.intersperse " → "
-                                |> List.foldl (++) ""
-                                |> Html.text
-                            ]
+                        [ ( "auto", Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ] )
+                        , ( "auto"
+                          , Html.h1 []
+                                [ Html.text phrase
+                                ]
+                          )
+                        , ( "1fr"
+                          , Html.node "drawing-canvas"
+                                [ Attrs.alt "Draw what it is here"
+                                , Attrs.style "height" "calc(100vh - 16rem)"
+                                , Attrs.style "width" "calc((100vh - 16rem)/2)"
+                                , Attrs.style "place-self" "center"
+                                , Attrs.style "outline" "2px dashed lightgray"
+                                , Events.on "drawingChanged" <| Json.Decode.map SetRound <| Json.Decode.at [ "target", "drawing" ] <| Json.Decode.string
+                                ]
+                                []
+                          )
+                        , ( "auto", Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ] )
+                        , ( "auto"
+                          , Html.p []
+                                [ playerOrder
+                                    |> List.map .name
+                                    |> List.reverse
+                                    |> List.intersperse " → "
+                                    |> List.foldl (++) ""
+                                    |> Html.text
+                                ]
+                          )
                         ]
 
 
@@ -648,7 +679,7 @@ newDescribeView model =
     in
     case currentResult of
         Err error ->
-            rowView [ Html.p [] [ Html.text error ] ]
+            rowView [ ( "auto", Html.p [] [ Html.text error ] ) ]
 
         Ok ( ( round, _ ), thread ) ->
             let
@@ -661,56 +692,110 @@ newDescribeView model =
             case drawingResult of
                 Err error ->
                     rowView
-                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-                        , Html.p [] [ Html.text error ]
-                        , Html.p []
-                            [ playerOrder
-                                |> List.map .name
-                                |> List.reverse
-                                |> List.intersperse " → "
-                                |> List.foldl (++) ""
-                                |> Html.text
-                            ]
+                        [ ( "auto", Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ] )
+                        , ( "auto", Html.p [] [ Html.text error ] )
+                        , ( "auto"
+                          , Html.p []
+                                [ playerOrder
+                                    |> List.map .name
+                                    |> List.reverse
+                                    |> List.intersperse " → "
+                                    |> List.foldl (++) ""
+                                    |> Html.text
+                                ]
+                          )
                         ]
 
                 Ok drawing ->
                     rowView
-                        [ Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ]
-                        , Html.img
-                            [ Attrs.alt "The drawing"
-                            , Attrs.src drawing
-                            , Attrs.style "height" "80vmin"
-                            , Attrs.style "width" "40vmin"
-                            , Attrs.style "place-self" "center"
-                            , Attrs.style "outline" "2px dashed lightgray"
-                            ]
-                            []
-                        , Html.input
-                            [ Events.onInput SetRound
-                            , Attrs.placeholder "Describe the drawing"
-                            ]
-                            []
-                        , Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ]
+                        [ ( "auto", Html.code [] [ model.error |> Maybe.withDefault "" |> Html.text ] )
+                        , ( "1fr"
+                          , Html.div
+                                [ Attrs.style "background-image" <| "url(" ++ drawing ++ ")"
+                                , Attrs.style "background-size" "contain"
+                                , Attrs.style "background-position" "center"
+                                , Attrs.style "background-repeat" "no-repeat"
+                                ]
+                                []
+                          )
+                        , ( "auto"
+                          , Html.input
+                                [ Events.onInput SetRound
+                                , Attrs.placeholder "Describe the drawing"
+                                ]
+                                []
+                          )
+                        , ( "auto", Html.button [ Events.onClick SubmitRound ] [ Html.text "Submit" ] )
                         ]
+
+
+reviewView : Model -> Html.Html Msg
+reviewView model =
+    model.threads
+        |> List.concatMap reviewThreadView
+        |> Html.div []
+
+
+reviewThreadView : Thread -> List (Html.Html Msg)
+reviewThreadView thread =
+    thread.pairs
+        |> List.concatMap
+            (\( phrase, drawing ) ->
+                let
+                    phraseEls =
+                        [ Html.p []
+                            [ phrase |> Maybe.map .author |> Maybe.withDefault "" |> (\t -> t ++ ":") |> Html.text
+                            ]
+                        , Html.p [ Attrs.style "text-align" "center" ]
+                            [ phrase |> Maybe.map .phrase |> Maybe.withDefault "" |> Html.text
+                            ]
+                        ]
+                in
+                case drawing of
+                    Nothing ->
+                        phraseEls
+
+                    Just draw ->
+                        (++) phraseEls
+                            [ Html.p []
+                                [ drawing |> Maybe.map .author |> Maybe.withDefault "" |> (\t -> t ++ ":") |> Html.text
+                                ]
+                            , Html.div
+                                [ Attrs.style "background-image" <| "url(" ++ (drawing |> Maybe.map .drawing |> Maybe.withDefault "") ++ ")"
+                                , Attrs.style "background-size" "contain"
+                                , Attrs.style "background-position" "center"
+                                , Attrs.style "background-repeat" "no-repeat"
+                                , Attrs.style "height" "100vw"
+                                ]
+                                []
+                            ]
+            )
+        |> (\l -> l ++ [ Html.hr [] [] ])
 
 
 
 -- View Helpers
 
 
-rowView : List (Html.Html Msg) -> Html.Html Msg
-rowView =
-    Html.div
-        [ Attrs.style "display" "grid"
-        , Attrs.style "grid-auto-flow" "row"
-        , Attrs.style "grid-gap" "1em"
-        ]
+rowView : List ( String, Html.Html Msg ) -> Html.Html Msg
+rowView rows =
+    List.map Tuple.second rows
+        |> Html.div
+            [ Attrs.style "display" "grid"
+            , Attrs.style "grid-auto-flow" "row"
+            , Attrs.style "grid-template-rows" <| String.join " " <| List.map Tuple.first rows
+            , Attrs.style "grid-gap" "1em"
+            , Attrs.style "height" "100%"
+            ]
 
 
-columnView : List (Html.Html Msg) -> Html.Html Msg
-columnView =
-    Html.div
-        [ Attrs.style "display" "grid"
-        , Attrs.style "grid-auto-flow" "column"
-        , Attrs.style "grid-gap" "1em"
-        ]
+columnView : List ( String, Html.Html Msg ) -> Html.Html Msg
+columnView cols =
+    List.map Tuple.second cols
+        |> Html.div
+            [ Attrs.style "display" "grid"
+            , Attrs.style "grid-auto-flow" "column"
+            , Attrs.style "grid-template-columns" <| String.join " " <| List.map Tuple.first cols
+            , Attrs.style "grid-gap" "1em"
+            , Attrs.style "height" "100%"
+            ]
