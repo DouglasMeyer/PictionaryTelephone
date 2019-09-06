@@ -1,0 +1,37 @@
+<html>
+  <body>
+    <style>#outgoing {
+        width: 600px;
+        word-wrap: break-word;
+        white-space: normal;
+      }</style>
+    <form>
+      <textarea id="incoming"></textarea>
+      <button type="submit">submit</button>
+    </form>
+    <pre id="outgoing"></pre>
+    <script src="/simplepeer.a0ff9552.js"></script>
+    <script>var p = new SimplePeer({
+  initiator: location.hash === '#1',
+  trickle: false
+});
+p.on('error', function (err) {
+  return console.log('error', err);
+});
+p.on('signal', function (data) {
+  console.log('SIGNAL', JSON.stringify(data));
+  document.querySelector('#outgoing').textContent = JSON.stringify(data);
+});
+document.querySelector('form').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  p.signal(JSON.parse(document.querySelector('#incoming').value));
+});
+p.on('connect', function () {
+  console.log('CONNECT');
+  p.send('whatever' + Math.random());
+});
+p.on('data', function (data) {
+  console.log('data: ' + data);
+});</script>
+  </body>
+</html>

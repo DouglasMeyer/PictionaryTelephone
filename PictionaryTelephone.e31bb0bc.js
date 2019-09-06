@@ -142,7 +142,7 @@ var e=arguments[3],r=require("js-binarypack"),t={debug:!1,inherits:function(e,r)
 },{"js-binarypack":"lHOc"}],"aYFJ":[function(require,module,exports) {
 var t=require("./util");function e(n,i){if(!(this instanceof e))return new e(n);this._dc=n,t.debug=i,this._outgoing={},this._incoming={},this._received={},this._window=1e3,this._mtu=500,this._interval=0,this._count=0,this._queue=[],this._setupDC()}e.prototype.send=function(e){var n=t.pack(e);n.size<this._mtu?this._handleSend(["no",n]):(this._outgoing[this._count]={ack:0,chunks:this._chunk(n)},t.debug&&(this._outgoing[this._count].timer=new Date),this._sendWindowedChunks(this._count),this._count+=1)},e.prototype._setupInterval=function(){var t=this;this._timeout=setInterval(function(){var e=t._queue.shift();if(e._multiple)for(var n=0,i=e.length;n<i;n+=1)t._intervalSend(e[n]);else t._intervalSend(e)},this._interval)},e.prototype._intervalSend=function(e){var n=this;e=t.pack(e),t.blobToBinaryString(e,function(t){n._dc.send(t)}),0===n._queue.length&&(clearTimeout(n._timeout),n._timeout=null)},e.prototype._processAcks=function(){for(var t in this._outgoing)this._outgoing.hasOwnProperty(t)&&this._sendWindowedChunks(t)},e.prototype._handleSend=function(t){for(var e=!0,n=0,i=this._queue.length;n<i;n+=1){var o=this._queue[n];o===t?e=!1:o._multiple&&-1!==o.indexOf(t)&&(e=!1)}e&&(this._queue.push(t),this._timeout||this._setupInterval())},e.prototype._setupDC=function(){var e=this;this._dc.onmessage=function(n){var i=n.data;if(i.constructor===String){var o=t.binaryStringToArrayBuffer(i);i=t.unpack(o),e._handleMessage(i)}}},e.prototype._handleMessage=function(e){var n,i=e[1],o=this._incoming[i],s=this._outgoing[i];switch(e[0]){case"no":var a=i;a&&this.onmessage(t.unpack(a));break;case"end":if(n=o,this._received[i]=e[2],!n)break;this._ack(i);break;case"ack":if(n=s){var h=e[2];n.ack=Math.max(h,n.ack),n.ack>=n.chunks.length?(t.log("Time: ",new Date-n.timer),delete this._outgoing[i]):this._processAcks()}break;case"chunk":if(!(n=o)){if(!0===this._received[i])break;n={ack:["ack",i,0],chunks:[]},this._incoming[i]=n}var r=e[2],u=e[3];n.chunks[r]=new Uint8Array(u),r===n.ack[2]&&this._calculateNextAck(i),this._ack(i);break;default:this._handleSend(e)}},e.prototype._chunk=function(e){for(var n=[],i=e.size,o=0;o<i;){var s=Math.min(i,o+this._mtu),a={payload:e.slice(o,s)};n.push(a),o=s}return t.log("Created",n.length,"chunks."),n},e.prototype._ack=function(t){var e=this._incoming[t].ack;this._received[t]===e[2]&&(this._complete(t),this._received[t]=!0),this._handleSend(e)},e.prototype._calculateNextAck=function(t){for(var e=this._incoming[t],n=e.chunks,i=0,o=n.length;i<o;i+=1)if(void 0===n[i])return void(e.ack[2]=i);e.ack[2]=n.length},e.prototype._sendWindowedChunks=function(e){t.log("sendWindowedChunks for: ",e);for(var n=this._outgoing[e],i=n.chunks,o=[],s=Math.min(n.ack+this._window,i.length),a=n.ack;a<s;a+=1)i[a].sent&&a!==n.ack||(i[a].sent=!0,o.push(["chunk",e,a,i[a].payload]));n.ack+this._window>=i.length&&o.push(["end",e,i.length]),o._multiple=!0,this._handleSend(o)},e.prototype._complete=function(e){t.log("Completed called for",e);var n=this,i=this._incoming[e].chunks,o=new Blob(i);t.blobToArrayBuffer(o,function(e){n.onmessage(t.unpack(e))}),delete this._incoming[e]},e.higherBandwidthSDP=function(t){var e=navigator.appVersion.match(/Chrome\/(.*?) /);if(e&&(e=parseInt(e[1].split(".").shift()))<31){var n=t.split("b=AS:30");if(n.length>1)return n[0]+"b=AS:102400"+n[1]}return t},e.prototype.onmessage=function(t){},module.exports=e;
 },{"./util":"T9kO"}],"HCdX":[function(require,module,exports) {
-"use strict";var e=this&&this.__assign||function(){return(e=Object.assign||function(e){for(var n,t=1,o=arguments.length;t<o;t++)for(var i in n=arguments[t])Object.prototype.hasOwnProperty.call(n,i)&&(e[i]=n[i]);return e}).apply(this,arguments)},n=this&&this.__awaiter||function(e,n,t,o){return new(t||(t=Promise))(function(i,r){function c(e){try{s(o.next(e))}catch(n){r(n)}}function a(e){try{s(o.throw(e))}catch(n){r(n)}}function s(e){e.done?i(e.value):new t(function(n){n(e.value)}).then(c,a)}s((o=o.apply(e,n||[])).next())})},t=this&&this.__generator||function(e,n){var t,o,i,r,c={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return r={next:a(0),throw:a(1),return:a(2)},"function"==typeof Symbol&&(r[Symbol.iterator]=function(){return this}),r;function a(r){return function(a){return function(r){if(t)throw new TypeError("Generator is already executing.");for(;c;)try{if(t=1,o&&(i=2&r[0]?o.return:r[0]?o.throw||((i=o.return)&&i.call(o),0):o.next)&&!(i=i.call(o,r[1])).done)return i;switch(o=0,i&&(r=[2&r[0],i.value]),r[0]){case 0:case 1:i=r;break;case 4:return c.label++,{value:r[1],done:!1};case 5:c.label++,o=r[1],r=[0];continue;case 7:r=c.ops.pop(),c.trys.pop();continue;default:if(!(i=(i=c.trys).length>0&&i[i.length-1])&&(6===r[0]||2===r[0])){c=0;continue}if(3===r[0]&&(!i||r[1]>i[0]&&r[1]<i[3])){c.label=r[1];break}if(6===r[0]&&c.label<i[1]){c.label=i[1],i=r;break}if(i&&c.label<i[2]){c.label=i[2],c.ops.push(r);break}i[2]&&c.ops.pop(),c.trys.pop();continue}r=n.call(e,c)}catch(a){r=[6,a],o=0}finally{t=i=0}if(5&r[0])throw r[1];return{value:r[0]?r[1]:void 0,done:!0}}([r,a])}}},o=this&&this.__importStar||function(e){if(e&&e.__esModule)return e;var n={};if(null!=e)for(var t in e)Object.hasOwnProperty.call(e,t)&&(n[t]=e[t]);return n.default=e,n},i=this&&this.__importDefault||function(e){return e&&e.__esModule?e:{default:e}};Object.defineProperty(exports,"__esModule",{value:!0});var r=o(require("reliable")),c=require("./util"),a=i(require("./logger")),s=require("./adapter"),l=require("./enums"),d=function(){function o(e){this.connection=e}return o.prototype.startConnection=function(e){var n=this._startPeerConnection();if(this.connection.peerConnection=n,this.connection.type===l.ConnectionType.Media&&e._stream&&this._addTracksToConnection(e._stream,n),e.originator){if(this.connection.type===l.ConnectionType.Data){var t=this.connection,o={};c.util.supports.sctp||(o={reliable:e.reliable});var i=n.createDataChannel(t.label,o);t.initialize(i)}this._makeOffer()}else this.handleSDP("OFFER",e.sdp)},o.prototype._startPeerConnection=function(){a.default.log("Creating RTCPeerConnection.");var e={};this.connection.type!==l.ConnectionType.Data||c.util.supports.sctp?this.connection.type===l.ConnectionType.Media&&(e={optional:[{DtlsSrtpKeyAgreement:!0}]}):e={optional:[{RtpDataChannels:!0}]};var n=new s.RTCPeerConnection(this.connection.provider.options.config,e);return this._setupListeners(n),n},o.prototype._setupListeners=function(e){var n=this,t=this.connection.peer,o=this.connection.connectionId,i=this.connection.type,r=this.connection.provider;a.default.log("Listening for ICE candidates."),e.onicecandidate=function(e){e.candidate&&(a.default.log("Received ICE candidates for:",t),r.socket.send({type:l.ServerMessageType.Candidate,payload:{candidate:e.candidate,type:i,connectionId:o},dst:t}))},e.oniceconnectionstatechange=function(){switch(e.iceConnectionState){case"failed":a.default.log("iceConnectionState is failed, closing connections to "+t),n.connection.emit(l.ConnectionEventType.Error,new Error("Negotiation of connection to "+t+" failed.")),n.connection.close();break;case"closed":a.default.log("iceConnectionState is closed, closing connections to "+t),n.connection.emit(l.ConnectionEventType.Error,new Error("Negotiation of connection to "+t+" failed.")),n.connection.close();break;case"disconnected":a.default.log("iceConnectionState is disconnected, closing connections to "+t);break;case"completed":e.onicecandidate=c.util.noop}n.connection.emit(l.ConnectionEventType.IceStateChanged,e.iceConnectionState)},a.default.log("Listening for data channel"),e.ondatachannel=function(e){a.default.log("Received data channel");var n=e.channel;r.getConnection(t,o).initialize(n)},a.default.log("Listening for remote stream"),e.ontrack=function(e){a.default.log("Received remote stream");var i=e.streams[0],c=r.getConnection(t,o);if(c.type===l.ConnectionType.Media){var s=c;n._addStreamToMediaConnection(i,s)}}},o.prototype.cleanup=function(){a.default.log("Cleaning up PeerConnection to "+this.connection.peer);var e=this.connection.peerConnection;if(e){this.connection.peerConnection=null,e.onicecandidate=e.oniceconnectionstatechange=e.ondatachannel=e.ontrack=function(){};var n="closed"!==e.signalingState,t=!1;if(this.connection.type===l.ConnectionType.Data){var o=this.connection.dataChannel;o&&(t=!!o.readyState&&"closed"!==o.readyState)}(n||t)&&e.close()}},o.prototype._makeOffer=function(){return n(this,void 0,Promise,function(){var n,o,i,s,d,p,u;return t(this,function(t){switch(t.label){case 0:n=this.connection.peerConnection,o=this.connection.provider,t.label=1;case 1:return t.trys.push([1,7,,8]),[4,n.createOffer(this.connection.options.constraints)];case 2:i=t.sent(),a.default.log("Created offer."),c.util.supports.sctp||this.connection.type!==l.ConnectionType.Data||(d=this.connection).reliable&&(i.sdp=r.higherBandwidthSDP(i.sdp)),this.connection.options.sdpTransform&&"function"==typeof this.connection.options.sdpTransform&&(i.sdp=this.connection.options.sdpTransform(i.sdp)||i.sdp),t.label=3;case 3:return t.trys.push([3,5,,6]),[4,n.setLocalDescription(i)];case 4:return t.sent(),a.default.log("Set localDescription:",i,"for:"+this.connection.peer),s={sdp:i,type:this.connection.type,connectionId:this.connection.connectionId,metadata:this.connection.metadata,browser:c.util.browser},this.connection.type===l.ConnectionType.Data&&(d=this.connection,s=e({},s,{label:d.label,reliable:d.reliable,serialization:d.serialization})),o.socket.send({type:l.ServerMessageType.Offer,payload:s,dst:this.connection.peer}),[3,6];case 5:return"OperationError: Failed to set local offer sdp: Called in wrong state: kHaveRemoteOffer"!=(p=t.sent())&&(o.emitError(l.PeerErrorType.WebRTC,p),a.default.log("Failed to setLocalDescription, ",p)),[3,6];case 6:return[3,8];case 7:return u=t.sent(),o.emitError(l.PeerErrorType.WebRTC,u),a.default.log("Failed to createOffer, ",u),[3,8];case 8:return[2]}})})},o.prototype._makeAnswer=function(){return n(this,void 0,Promise,function(){var e,n,o,i,s;return t(this,function(t){switch(t.label){case 0:e=this.connection.peerConnection,n=this.connection.provider,t.label=1;case 1:return t.trys.push([1,7,,8]),[4,e.createAnswer()];case 2:o=t.sent(),a.default.log("Created answer."),c.util.supports.sctp||this.connection.type!==l.ConnectionType.Data||this.connection.reliable&&(o.sdp=r.higherBandwidthSDP(o.sdp)),this.connection.options.sdpTransform&&"function"==typeof this.connection.options.sdpTransform&&(o.sdp=this.connection.options.sdpTransform(o.sdp)||o.sdp),t.label=3;case 3:return t.trys.push([3,5,,6]),[4,e.setLocalDescription(o)];case 4:return t.sent(),a.default.log("Set localDescription:",o,"for:"+this.connection.peer),n.socket.send({type:l.ServerMessageType.Answer,payload:{sdp:o,type:this.connection.type,connectionId:this.connection.connectionId,browser:c.util.browser},dst:this.connection.peer}),[3,6];case 5:return i=t.sent(),n.emitError(l.PeerErrorType.WebRTC,i),a.default.log("Failed to setLocalDescription, ",i),[3,6];case 6:return[3,8];case 7:return s=t.sent(),n.emitError(l.PeerErrorType.WebRTC,s),a.default.log("Failed to create answer, ",s),[3,8];case 8:return[2]}})})},o.prototype.handleSDP=function(e,o){return n(this,void 0,Promise,function(){var n,i,r,c;return t(this,function(t){switch(t.label){case 0:o=new s.RTCSessionDescription(o),n=this.connection.peerConnection,i=this.connection.provider,a.default.log("Setting remote description",o),r=this,t.label=1;case 1:return t.trys.push([1,5,,6]),[4,n.setRemoteDescription(o)];case 2:return t.sent(),a.default.log("Set remoteDescription:"+e+" for:"+this.connection.peer),"OFFER"!==e?[3,4]:[4,r._makeAnswer()];case 3:t.sent(),t.label=4;case 4:return[3,6];case 5:return c=t.sent(),i.emitError(l.PeerErrorType.WebRTC,c),a.default.log("Failed to setRemoteDescription, ",c),[3,6];case 6:return[2]}})})},o.prototype.handleCandidate=function(e){return n(this,void 0,Promise,function(){var n,o,i,r,c,d;return t(this,function(t){switch(t.label){case 0:n=e.candidate,o=e.sdpMLineIndex,i=e.sdpMid,r=this.connection.peerConnection,c=this.connection.provider,t.label=1;case 1:return t.trys.push([1,3,,4]),[4,r.addIceCandidate(new s.RTCIceCandidate({sdpMid:i,sdpMLineIndex:o,candidate:n}))];case 2:return t.sent(),a.default.log("Added ICE candidate for:"+this.connection.peer),[3,4];case 3:return d=t.sent(),c.emitError(l.PeerErrorType.WebRTC,d),a.default.log("Failed to handleCandidate, ",d),[3,4];case 4:return[2]}})})},o.prototype._addTracksToConnection=function(e,n){if(a.default.log("add tracks from stream "+e.id+" to peer connection"),!n.addTrack)return a.default.error("Your browser does't support RTCPeerConnection#addTrack. Ignored.");e.getTracks().forEach(function(t){n.addTrack(t,e)})},o.prototype._addStreamToMediaConnection=function(e,n){a.default.log("add stream "+e.id+" to media connection "+n.connectionId),n.addStream(e)},o}();exports.Negotiator=d;
+"use strict";var e=this&&this.__assign||function(){return(e=Object.assign||function(e){for(var n,t=1,o=arguments.length;t<o;t++)for(var i in n=arguments[t])Object.prototype.hasOwnProperty.call(n,i)&&(e[i]=n[i]);return e}).apply(this,arguments)},n=this&&this.__awaiter||function(e,n,t,o){return new(t||(t=Promise))(function(i,r){function c(e){try{s(o.next(e))}catch(n){r(n)}}function a(e){try{s(o.throw(e))}catch(n){r(n)}}function s(e){e.done?i(e.value):new t(function(n){n(e.value)}).then(c,a)}s((o=o.apply(e,n||[])).next())})},t=this&&this.__generator||function(e,n){var t,o,i,r,c={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return r={next:a(0),throw:a(1),return:a(2)},"function"==typeof Symbol&&(r[Symbol.iterator]=function(){return this}),r;function a(r){return function(a){return function(r){if(t)throw new TypeError("Generator is already executing.");for(;c;)try{if(t=1,o&&(i=2&r[0]?o.return:r[0]?o.throw||((i=o.return)&&i.call(o),0):o.next)&&!(i=i.call(o,r[1])).done)return i;switch(o=0,i&&(r=[2&r[0],i.value]),r[0]){case 0:case 1:i=r;break;case 4:return c.label++,{value:r[1],done:!1};case 5:c.label++,o=r[1],r=[0];continue;case 7:r=c.ops.pop(),c.trys.pop();continue;default:if(!(i=(i=c.trys).length>0&&i[i.length-1])&&(6===r[0]||2===r[0])){c=0;continue}if(3===r[0]&&(!i||r[1]>i[0]&&r[1]<i[3])){c.label=r[1];break}if(6===r[0]&&c.label<i[1]){c.label=i[1],i=r;break}if(i&&c.label<i[2]){c.label=i[2],c.ops.push(r);break}i[2]&&c.ops.pop(),c.trys.pop();continue}r=n.call(e,c)}catch(a){r=[6,a],o=0}finally{t=i=0}if(5&r[0])throw r[1];return{value:r[0]?r[1]:void 0,done:!0}}([r,a])}}},o=this&&this.__importStar||function(e){if(e&&e.__esModule)return e;var n={};if(null!=e)for(var t in e)Object.hasOwnProperty.call(e,t)&&(n[t]=e[t]);return n.default=e,n},i=this&&this.__importDefault||function(e){return e&&e.__esModule?e:{default:e}};Object.defineProperty(exports,"__esModule",{value:!0});var r=o(require("reliable")),c=require("./util"),a=i(require("./logger")),s=require("./adapter"),l=require("./enums"),d=function(){function o(e){this.connection=e}return o.prototype.startConnection=function(e){var n=this._startPeerConnection();if(this.connection.peerConnection=n,this.connection.type===l.ConnectionType.Media&&e._stream&&this._addTracksToConnection(e._stream,n),e.originator){if(this.connection.type===l.ConnectionType.Data){var t=this.connection,o={};c.util.supports.sctp||(o={reliable:e.reliable});var i=n.createDataChannel(t.label,o);t.initialize(i)}this._makeOffer()}else this.handleSDP("OFFER",e.sdp)},o.prototype._startPeerConnection=function(){a.default.log("Creating RTCPeerConnection.");var e={};this.connection.type!==l.ConnectionType.Data||c.util.supports.sctp?this.connection.type===l.ConnectionType.Media&&(e={optional:[{DtlsSrtpKeyAgreement:!0}]}):e={optional:[{RtpDataChannels:!0}]};var n=new s.RTCPeerConnection(this.connection.provider.options.config,e);return this._setupListeners(n),n},o.prototype._setupListeners=function(e){var n=this,t=this.connection.peer,o=this.connection.connectionId,i=this.connection.type,r=this.connection.provider;a.default.log("Listening for ICE candidates."),e.onicecandidate=function(e){e.candidate&&(a.default.log("Received ICE candidates for:",t),r.socket.send({type:l.ServerMessageType.Candidate,payload:{candidate:e.candidate,type:i,connectionId:o},dst:t}))},e.oniceconnectionstatechange=function(){switch(e.iceConnectionState){case"failed":a.default.log("iceConnectionState is failed, closing connections to "+t),n.connection.emit(l.ConnectionEventType.Error,new Error("Negotiation of connection to "+t+" failed.")),n.connection.close();break;case"closed":a.default.log("iceConnectionState is closed, closing connections to "+t),n.connection.emit(l.ConnectionEventType.Error,new Error("Connection to "+t+" closed.")),n.connection.close();break;case"disconnected":a.default.log("iceConnectionState is disconnected, closing connections to "+t),n.connection.emit(l.ConnectionEventType.Error,new Error("Connection to "+t+" disconnected.")),n.connection.close();break;case"completed":e.onicecandidate=c.util.noop}n.connection.emit(l.ConnectionEventType.IceStateChanged,e.iceConnectionState)},a.default.log("Listening for data channel"),e.ondatachannel=function(e){a.default.log("Received data channel");var n=e.channel;r.getConnection(t,o).initialize(n)},a.default.log("Listening for remote stream"),e.ontrack=function(e){a.default.log("Received remote stream");var i=e.streams[0],c=r.getConnection(t,o);if(c.type===l.ConnectionType.Media){var s=c;n._addStreamToMediaConnection(i,s)}}},o.prototype.cleanup=function(){a.default.log("Cleaning up PeerConnection to "+this.connection.peer);var e=this.connection.peerConnection;if(e){this.connection.peerConnection=null,e.onicecandidate=e.oniceconnectionstatechange=e.ondatachannel=e.ontrack=function(){};var n="closed"!==e.signalingState,t=!1;if(this.connection.type===l.ConnectionType.Data){var o=this.connection.dataChannel;o&&(t=!!o.readyState&&"closed"!==o.readyState)}(n||t)&&e.close()}},o.prototype._makeOffer=function(){return n(this,void 0,Promise,function(){var n,o,i,s,d,p,u;return t(this,function(t){switch(t.label){case 0:n=this.connection.peerConnection,o=this.connection.provider,t.label=1;case 1:return t.trys.push([1,7,,8]),[4,n.createOffer(this.connection.options.constraints)];case 2:i=t.sent(),a.default.log("Created offer."),c.util.supports.sctp||this.connection.type!==l.ConnectionType.Data||(d=this.connection).reliable&&(i.sdp=r.higherBandwidthSDP(i.sdp)),this.connection.options.sdpTransform&&"function"==typeof this.connection.options.sdpTransform&&(i.sdp=this.connection.options.sdpTransform(i.sdp)||i.sdp),t.label=3;case 3:return t.trys.push([3,5,,6]),[4,n.setLocalDescription(i)];case 4:return t.sent(),a.default.log("Set localDescription:",i,"for:"+this.connection.peer),s={sdp:i,type:this.connection.type,connectionId:this.connection.connectionId,metadata:this.connection.metadata,browser:c.util.browser},this.connection.type===l.ConnectionType.Data&&(d=this.connection,s=e({},s,{label:d.label,reliable:d.reliable,serialization:d.serialization})),o.socket.send({type:l.ServerMessageType.Offer,payload:s,dst:this.connection.peer}),[3,6];case 5:return"OperationError: Failed to set local offer sdp: Called in wrong state: kHaveRemoteOffer"!=(p=t.sent())&&(o.emitError(l.PeerErrorType.WebRTC,p),a.default.log("Failed to setLocalDescription, ",p)),[3,6];case 6:return[3,8];case 7:return u=t.sent(),o.emitError(l.PeerErrorType.WebRTC,u),a.default.log("Failed to createOffer, ",u),[3,8];case 8:return[2]}})})},o.prototype._makeAnswer=function(){return n(this,void 0,Promise,function(){var e,n,o,i,s;return t(this,function(t){switch(t.label){case 0:e=this.connection.peerConnection,n=this.connection.provider,t.label=1;case 1:return t.trys.push([1,7,,8]),[4,e.createAnswer()];case 2:o=t.sent(),a.default.log("Created answer."),c.util.supports.sctp||this.connection.type!==l.ConnectionType.Data||this.connection.reliable&&(o.sdp=r.higherBandwidthSDP(o.sdp)),this.connection.options.sdpTransform&&"function"==typeof this.connection.options.sdpTransform&&(o.sdp=this.connection.options.sdpTransform(o.sdp)||o.sdp),t.label=3;case 3:return t.trys.push([3,5,,6]),[4,e.setLocalDescription(o)];case 4:return t.sent(),a.default.log("Set localDescription:",o,"for:"+this.connection.peer),n.socket.send({type:l.ServerMessageType.Answer,payload:{sdp:o,type:this.connection.type,connectionId:this.connection.connectionId,browser:c.util.browser},dst:this.connection.peer}),[3,6];case 5:return i=t.sent(),n.emitError(l.PeerErrorType.WebRTC,i),a.default.log("Failed to setLocalDescription, ",i),[3,6];case 6:return[3,8];case 7:return s=t.sent(),n.emitError(l.PeerErrorType.WebRTC,s),a.default.log("Failed to create answer, ",s),[3,8];case 8:return[2]}})})},o.prototype.handleSDP=function(e,o){return n(this,void 0,Promise,function(){var n,i,r,c;return t(this,function(t){switch(t.label){case 0:o=new s.RTCSessionDescription(o),n=this.connection.peerConnection,i=this.connection.provider,a.default.log("Setting remote description",o),r=this,t.label=1;case 1:return t.trys.push([1,5,,6]),[4,n.setRemoteDescription(o)];case 2:return t.sent(),a.default.log("Set remoteDescription:"+e+" for:"+this.connection.peer),"OFFER"!==e?[3,4]:[4,r._makeAnswer()];case 3:t.sent(),t.label=4;case 4:return[3,6];case 5:return c=t.sent(),i.emitError(l.PeerErrorType.WebRTC,c),a.default.log("Failed to setRemoteDescription, ",c),[3,6];case 6:return[2]}})})},o.prototype.handleCandidate=function(e){return n(this,void 0,Promise,function(){var n,o,i,r,c,d;return t(this,function(t){switch(t.label){case 0:n=e.candidate,o=e.sdpMLineIndex,i=e.sdpMid,r=this.connection.peerConnection,c=this.connection.provider,t.label=1;case 1:return t.trys.push([1,3,,4]),[4,r.addIceCandidate(new s.RTCIceCandidate({sdpMid:i,sdpMLineIndex:o,candidate:n}))];case 2:return t.sent(),a.default.log("Added ICE candidate for:"+this.connection.peer),[3,4];case 3:return d=t.sent(),c.emitError(l.PeerErrorType.WebRTC,d),a.default.log("Failed to handleCandidate, ",d),[3,4];case 4:return[2]}})})},o.prototype._addTracksToConnection=function(e,n){if(a.default.log("add tracks from stream "+e.id+" to peer connection"),!n.addTrack)return a.default.error("Your browser does't support RTCPeerConnection#addTrack. Ignored.");e.getTracks().forEach(function(t){n.addTrack(t,e)})},o.prototype._addStreamToMediaConnection=function(e,n){a.default.log("add stream "+e.id+" to media connection "+n.connectionId),n.addStream(e)},o}();exports.Negotiator=d;
 },{"reliable":"aYFJ","./util":"BHXf","./logger":"8WOs","./adapter":"sXtV","./enums":"9ZRY"}],"tQFK":[function(require,module,exports) {
 "use strict";var t=this&&this.__extends||function(){var t=function(e,r){return(t=Object.setPrototypeOf||{__proto__:[]}instanceof Array&&function(t,e){t.__proto__=e}||function(t,e){for(var r in e)e.hasOwnProperty(r)&&(t[r]=e[r])})(e,r)};return function(e,r){function n(){this.constructor=e}t(e,r),e.prototype=null===r?Object.create(r):(n.prototype=r.prototype,new n)}}();Object.defineProperty(exports,"__esModule",{value:!0});var e=require("eventemitter3"),r=function(e){function r(t,r,n){var o=e.call(this)||this;return o.peer=t,o.provider=r,o.options=n,o._open=!1,o.metadata=n.metadata,o}return t(r,e),Object.defineProperty(r.prototype,"open",{get:function(){return this._open},enumerable:!0,configurable:!0}),r}(e.EventEmitter);exports.BaseConnection=r;
 },{"eventemitter3":"2JJl"}],"dbHP":[function(require,module,exports) {
@@ -184,6 +184,24 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
+// class DrawingCanvas extends HTMLCanvasElement {
+//   constructor() {
+//     super();
+//     console.log('constructor');
+//     console.log('that', window.that=this);
+//   }
+//   static get observedAttributes() { return ['drawing']; }
+//   connectedCallback() {
+//   }
+//   disconnectedCallback() {
+//   }
+//   attributeChangedCallback(name, oldValue, newValue) {
+//     console.log('Custom element attributes changed.', name, oldValue, newValue);
+//     // updateStyle(this);
+//   }  
+// }
+// customElements.define('drawing-canvas', DrawingCanvas);
+// customElements.define('drawing-canvas', DrawingCanvas, { extends: 'canvas' });
 var DrawingCanvas =
 /*#__PURE__*/
 function (_HTMLElement) {
@@ -195,8 +213,9 @@ function (_HTMLElement) {
       return this._drawing;
     },
     set: function set(value) {
+      // FIXME debounce
       if (this._drawing === value) return;
-      this._drawing = value;
+      this._drawing = value; // I'm supposed to set `value` on canvas, but I think I'm good to skip it.
     }
   }]);
 
@@ -391,7 +410,117 @@ function (_HTMLElement) {
   return DrawingCanvas;
 }(_wrapNativeSuper(HTMLElement));
 
-customElements.define('drawing-canvas', DrawingCanvas);
+customElements.define('drawing-canvas', DrawingCanvas); // class Clock extends HTMLCanvasElement {
+//   get type() {
+//       return this.hasAttribute('mode');
+//   }
+//   set type(val) {
+//       this.setAttribute('mode', val);
+//       this.redraw();
+//   }
+//   constructor() {
+//       super();
+//       console.log("clock-canvas")
+//       this.tick = new Audio("data:audio/ogg;base64," +
+//           "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"
+//       );
+//       setInterval(handler => {
+//           this.time = new Date();            
+//           this.redraw();
+//           this.tick.play();
+//       }, 1000);
+//   }
+//   redraw() {
+//       let type = this.getAttribute('mode');
+//       switch (type) {
+//           case 'digital':
+//               this.render_digital();
+//               break;
+//           case 'analogue':
+//           default:
+//               this.render_analogue();
+//               break;
+//       }
+//   }
+//   render_digital() {
+//       let ctx = this.getContext("2d");
+//       ctx.moveTo(0,320);
+//       ctx.lineTo(320,0);
+//       ctx.stroke();
+//   }
+//   render_analogue() {
+//       let ctx = this.getContext("2d");
+//       let cx = this.width / 2.0;
+//       let cy = this.height / 2.0;
+//       let radie = cx;
+//       if (cy < cx)
+//           radie = cy;
+//       let size = radie * 0.005;
+//       let theta_sec = Math.PI + (2.0 * Math.PI) * ((1+this.time.getSeconds()) / 60.0);
+//       let theta_min = Math.PI + (2.0 * Math.PI) * ((this.time.getMinutes()) / 60.0);
+//       let theta_hour = Math.PI + (2.0 * Math.PI) * ((this.time.getHours()) / 12.0);
+//       ctx.clearRect(0,0,this.width, this.height);
+//       ctx.beginPath();
+//       //        
+//       // Draw analogue clock face
+//       //
+//       ctx.lineWidth = size;
+//       ctx.strokeStyle = "#000000";
+//       let ht = (2.0 * Math.PI) / 60.0;
+//       for (let i = 0; i < 60; i++)
+//       {
+//           let theta = i * ht;
+//           ctx.moveTo(cx + Math.sin(-theta) * (radie * 0.95) , cy + Math.cos(theta) * (radie * 0.95));
+//           ctx.lineTo(cx + Math.sin(-theta) * radie, cy + Math.cos(theta) * radie);
+//           ctx.stroke();
+//       }
+//       ctx.beginPath();
+//       ctx.lineWidth = size*3.0;
+//       ctx.strokeStyle = "#000000";
+//       ht = (2.0 * Math.PI) / 12.0;
+//       for (let i = 0; i < 12; i++)
+//       {
+//           let theta = i * ht;
+//           ctx.moveTo(cx + Math.sin(-theta) * (radie * 0.9) , cy + Math.cos(theta) * (radie * 0.9));
+//           ctx.lineTo(cx + Math.sin(-theta) * radie, cy + Math.cos(theta) * radie);
+//           ctx.stroke();
+//       }
+//       //
+//       // Draw clock pointers
+//       //
+//       // Seconds
+//       ctx.beginPath();
+//       ctx.strokeStyle = "#a04040";
+//       ctx.lineWidth = size;
+//       let dx = Math.sin(-theta_sec) * (radie * 0.9);
+//       let dy = Math.cos(theta_sec) * (radie * 0.9);
+//       ctx.moveTo(cx, cy);
+//       ctx.lineTo(cx + dx, cy + dy);
+//       ctx.stroke();
+//       // Minutes
+//       ctx.beginPath();
+//       ctx.strokeStyle = "#000000";
+//       ctx.lineWidth = size*3.0;
+//       dx = Math.sin(-theta_min) * (radie*0.9);
+//       dy = Math.cos(theta_min) * (radie*0.9);
+//       ctx.moveTo(cx, cy);
+//       ctx.lineTo(cx + dx, cy + dy);
+//       ctx.stroke();
+//       // Minutes
+//       ctx.beginPath();
+//       ctx.strokeStyle = "#000000";
+//       ctx.lineWidth = size*7.0;
+//       dx = Math.sin(-theta_hour) * (radie*0.7);
+//       dy = Math.cos(theta_hour) * (radie*0.7);
+//       ctx.moveTo(cx, cy);
+//       ctx.lineTo(cx + dx, cy + dy);
+//       ctx.stroke();
+//       ctx.beginPath();
+//       ctx.arc(cx,cy,radie*0.04, 0, 2*Math.PI, false);
+//       ctx.fill();
+//   }
+// }
+// window.customElements.define('clock-canvas', Clock, { extends: "canvas" });
 },{}],"Main.elm":[function(require,module,exports) {
 (function(scope){
 'use strict';
@@ -7217,7 +7346,9 @@ var author$project$Main$update = F2(
 					},
 					model.players);
 				var newPlayers = A2(elm$core$List$member, player, updatedPlayers) ? updatedPlayers : A2(elm$core$List$cons, player, model.players);
-				var newMe = _Utils_eq(player.peerId, model.me.peerId) ? player : model.me;
+				var newMe = _Utils_eq(player.peerId, model.me.peerId) ? _Utils_update(
+					player,
+					{name: model.me.name}) : model.me;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
@@ -7256,7 +7387,10 @@ var author$project$Main$update = F2(
 						var player = _n1.b;
 						return A4(author$project$Types$Player, index, player.host, player.name, player.peerId);
 					},
-					A2(elm$core$List$indexedMap, elm$core$Tuple$pair, players));
+					A2(
+						elm$core$List$indexedMap,
+						elm$core$Tuple$pair,
+						elm$core$List$reverse(model.players)));
 				var sendPlayers = A2(
 					elm$core$List$map,
 					A2(elm$core$Basics$composeR, author$project$Main$encodePlayer, author$project$Main$sendPlayer),
@@ -7455,24 +7589,6 @@ var elm$core$List$filterMap = F2(
 			_List_Nil,
 			xs);
 	});
-var elm$core$List$intersperse = F2(
-	function (sep, xs) {
-		if (!xs.b) {
-			return _List_Nil;
-		} else {
-			var hd = xs.a;
-			var tl = xs.b;
-			var step = F2(
-				function (x, rest) {
-					return A2(
-						elm$core$List$cons,
-						sep,
-						A2(elm$core$List$cons, x, rest));
-				});
-			var spersed = A3(elm$core$List$foldr, step, _List_Nil, tl);
-			return A2(elm$core$List$cons, hd, spersed);
-		}
-	});
 var elm$core$List$sortBy = _List_sortBy;
 var elm$core$Maybe$andThen = F2(
 	function (callback, maybeValue) {
@@ -7643,20 +7759,15 @@ var author$project$Main$newDescribeView = function (model) {
 							_List_fromArray(
 								[
 									elm$html$Html$text(
-									A3(
-										elm$core$List$foldl,
-										elm$core$Basics$append,
-										'',
+									A2(
+										elm$core$String$join,
+										' → ',
 										A2(
-											elm$core$List$intersperse,
-											' → ',
-											elm$core$List$reverse(
-												A2(
-													elm$core$List$map,
-													function ($) {
-														return $.name;
-													},
-													playerOrder)))))
+											elm$core$List$map,
+											function ($) {
+												return $.name;
+											},
+											playerOrder)))
 								])))
 					]));
 		} else {
@@ -7817,20 +7928,15 @@ var author$project$Main$newDrawingView = function (model) {
 							_List_fromArray(
 								[
 									elm$html$Html$text(
-									A3(
-										elm$core$List$foldl,
-										elm$core$Basics$append,
-										'',
+									A2(
+										elm$core$String$join,
+										' → ',
 										A2(
-											elm$core$List$intersperse,
-											' → ',
-											elm$core$List$reverse(
-												A2(
-													elm$core$List$map,
-													function ($) {
-														return $.name;
-													},
-													playerOrder)))))
+											elm$core$List$map,
+											function ($) {
+												return $.name;
+											},
+											playerOrder)))
 								])))
 					]));
 		} else {
@@ -7902,20 +8008,15 @@ var author$project$Main$newDrawingView = function (model) {
 							_List_fromArray(
 								[
 									elm$html$Html$text(
-									A3(
-										elm$core$List$foldl,
-										elm$core$Basics$append,
-										'',
+									A2(
+										elm$core$String$join,
+										' → ',
 										A2(
-											elm$core$List$intersperse,
-											' → ',
-											elm$core$List$reverse(
-												A2(
-													elm$core$List$map,
-													function ($) {
-														return $.name;
-													},
-													playerOrder)))))
+											elm$core$List$map,
+											function ($) {
+												return $.name;
+											},
+											playerOrder)))
 								])))
 					]));
 		}
@@ -11688,20 +11789,15 @@ var author$project$Main$newThreadView = function (model) {
 					_List_fromArray(
 						[
 							elm$html$Html$text(
-							A3(
-								elm$core$List$foldl,
-								elm$core$Basics$append,
-								'',
+							A2(
+								elm$core$String$join,
+								' → ',
 								A2(
-									elm$core$List$intersperse,
-									' → ',
-									elm$core$List$reverse(
-										A2(
-											elm$core$List$map,
-											function ($) {
-												return $.name;
-											},
-											playerOrder)))))
+									elm$core$List$map,
+									function ($) {
+										return $.name;
+									},
+									playerOrder)))
 						])))
 			]));
 };
@@ -11860,7 +11956,8 @@ var author$project$Main$startView = function (model) {
 					elm$html$Html$button,
 					_List_fromArray(
 						[
-							elm$html$Html$Events$onClick(author$project$Main$StartNewGame)
+							elm$html$Html$Events$onClick(author$project$Main$StartNewGame),
+							elm$html$Html$Attributes$disabled(model.me.peerId === '')
 						]),
 					_List_fromArray(
 						[
@@ -11887,7 +11984,7 @@ var author$project$Main$startView = function (model) {
 					_List_fromArray(
 						[
 							elm$html$Html$Events$onClick(author$project$Main$JoinGame),
-							elm$html$Html$Attributes$disabled(model.gameId === '')
+							elm$html$Html$Attributes$disabled((model.gameId === '') || (model.me.peerId === ''))
 						]),
 					_List_fromArray(
 						[
@@ -12379,6 +12476,24 @@ var elm$browser$Debugger$Overlay$viewMiniControls = F2(
 	});
 var elm$browser$Debugger$Overlay$explanationBad = '\nThe messages in this history do not match the messages handled by your\nprogram. I noticed changes in the following types:\n';
 var elm$browser$Debugger$Overlay$explanationRisky = '\nThis history seems old. It will work with this program, but some\nmessages have been added since the history was created:\n';
+var elm$core$List$intersperse = F2(
+	function (sep, xs) {
+		if (!xs.b) {
+			return _List_Nil;
+		} else {
+			var hd = xs.a;
+			var tl = xs.b;
+			var step = F2(
+				function (x, rest) {
+					return A2(
+						elm$core$List$cons,
+						sep,
+						A2(elm$core$List$cons, x, rest));
+				});
+			var spersed = A3(elm$core$List$foldr, step, _List_Nil, tl);
+			return A2(elm$core$List$cons, hd, spersed);
+		}
+	});
 var elm$browser$Debugger$Overlay$viewMention = F2(
 	function (tags, verbed) {
 		var _n0 = A2(
@@ -16334,20 +16449,45 @@ var _Main = require("./Main.elm");
 
 require("./index.css");
 
+var _arguments2 = arguments;
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 var pictionaryTelephone = _Main.Elm.Main.init({
   node: document.querySelector('main'),
   flags: {
     url: location.origin + location.pathname,
-    gameId: (location.search.match(/(?<=gameId=)[^&]*/g) || [])[0]
+    gameId: (location.search.match(/gameId=([^&]+)/) || [])[1]
   }
 });
 
-var peer = new _peerjs.default();
+window.pictionaryTelephone = pictionaryTelephone;
+var DEBUG = true;
+var peer = new _peerjs.default(null, {
+  "iceServers": [{
+    "urls": ["stun:stun.l.google.com:19302"]
+  }, // { "urls": ["turn:numb.viagenie.ca:3478"], "username": "###", "credential": "###" }
+  {
+    "urls": ["turn:numb.viagenie.ca:3478"],
+    "username": "DouglasYMan@Yahoo.com",
+    "credentail": "qbasic12"
+  }]
+});
 var connections = [];
 
 function send(action, data) {
+  console.log('send', {
+    action: action,
+    data: data
+  });
   connections.forEach(function (connection) {
     return connection.send({
       action: action,
@@ -16357,12 +16497,21 @@ function send(action, data) {
 }
 
 function addConnection(connection) {
+  var _arguments = arguments;
   connection.on('open', function () {
+    var _console;
+
+    if (DEBUG) (_console = console).log.apply(_console, ['connection on open'].concat(_toConsumableArray(_arguments)));
     connections.push(connection);
   });
+  if (DEBUG) connection.on('error', console.error.bind(console, 'connection error'));
   connection.on('data', function (_ref) {
     var action = _ref.action,
         data = _ref.data;
+    if (DEBUG) console.log('connection on data', {
+      action: action,
+      data: data
+    });
 
     if (action === 'sendPlayer') {
       pictionaryTelephone.ports.setPlayer.send(data);
@@ -16371,15 +16520,23 @@ function addConnection(connection) {
     }
   });
   connection.on('close', function () {
+    var _console2;
+
+    if (DEBUG) (_console2 = console).log.apply(_console2, ['connection on close'].concat(_toConsumableArray(_arguments)));
     var index = connections.indexOf(connection);
     if (index !== -1) connections.splice(index, 1);
   });
 }
 
+if (DEBUG) peer.on('error', console.error.bind(console, 'peer on error'));
 peer.on('open', function (id) {
+  var _console3;
+
+  if (DEBUG) (_console3 = console).log.apply(_console3, ['peer on open'].concat(_toConsumableArray(_arguments2)));
   pictionaryTelephone.ports.setPeerId.send(id);
 });
 pictionaryTelephone.ports.connectHost.subscribe(function (hostId) {
+  if (DEBUG) console.log('ports connectHost', hostId);
   var host = peer.connect(hostId);
   addConnection(host);
   host.once('open', function () {
@@ -16391,6 +16548,12 @@ pictionaryTelephone.ports.sendPlayer.subscribe(function (_ref2) {
       host = _ref2.host,
       name = _ref2.name,
       peerId = _ref2.peerId;
+  if (DEBUG) console.log('ports sendPlayer', {
+    index: index,
+    host: host,
+    name: name,
+    peerId: peerId
+  });
   send('sendPlayer', {
     index: index,
     host: host,
@@ -16401,12 +16564,17 @@ pictionaryTelephone.ports.sendPlayer.subscribe(function (_ref2) {
 pictionaryTelephone.ports.sendThread.subscribe(function (_ref3) {
   var id = _ref3.id,
       pairs = _ref3.pairs;
+  if (DEBUG) console.log('ports sendThread', {
+    id: id,
+    pairs: pairs
+  });
   send('sendThread', {
     id: id,
     pairs: pairs
   });
 });
 peer.on('connection', function (connection) {
+  if (DEBUG) console.log('peer on connection', connection.peer);
   if (connection.peer === peer.id) return;
   addConnection(connection);
 });
@@ -16438,7 +16606,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "51714" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "54003" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
